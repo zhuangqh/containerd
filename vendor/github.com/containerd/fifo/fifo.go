@@ -22,6 +22,8 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
+	"time"
+	goerr "errors"
 
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -37,6 +39,18 @@ type fifo struct {
 	closingOnce sync.Once // close has been called
 	closedOnce  sync.Once // fifo is closed
 	handle      *handle
+
+	writeTimeout time.Duration
+}
+
+// Option apply to fifo
+type Option func(*fifo)
+
+// WithWriteTimeout set timeout to fifo when writing
+func WithWriteTimeout(d time.Duration) Option {
+	return func(f *fifo) {
+		f.writeTimeout = d
+	}
 }
 
 var leakCheckWg *sync.WaitGroup
@@ -51,7 +65,7 @@ var leakCheckWg *sync.WaitGroup
 // - syscall.O_NONBLOCK - return io.ReadWriteCloser even if other side of the
 //     fifo isn't open. read/write will be connected after the actual fifo is
 //     open or after fifo is closed.
-func OpenFifo(ctx context.Context, fn string, flag int, perm os.FileMode) (io.ReadWriteCloser, error) {
+func OpenFifo(ctx context.Context, fn string, flag int, perm os.FileMode, opts ...Option) (io.ReadWriteCloser, error) {
 	if _, err := os.Stat(fn); err != nil {
 		if os.IsNotExist(err) && flag&syscall.O_CREAT != 0 {
 			if err := mkfifo(fn, uint32(perm&os.ModePerm)); err != nil && !os.IsExist(err) {
@@ -78,6 +92,10 @@ func OpenFifo(ctx context.Context, fn string, flag int, perm os.FileMode) (io.Re
 		opened:  make(chan struct{}),
 		closed:  make(chan struct{}),
 		closing: make(chan struct{}),
+	}
+
+	for _, opt := range opts {
+		opt(f)
 	}
 
 	wg := leakCheckWg
@@ -169,15 +187,28 @@ func (f *fifo) Write(b []byte) (int, error) {
 	}
 	select {
 	case <-f.opened:
-		return f.file.Write(b)
+		return f.doWrite(b)
 	default:
 	}
 	select {
 	case <-f.opened:
-		return f.file.Write(b)
+		return f.doWrite(b)
 	case <-f.closed:
 		return 0, ErrWriteClosed
 	}
+}
+
+func (f *fifo) doWrite(b []byte) (int, error) {
+	if f.writeTimeout != 0 {
+		f.file.SetWriteDeadline(time.Now().Add(f.writeTimeout))
+	}
+
+	n, err := f.file.Write(b)
+	if goerr.Is(err, os.ErrDeadlineExceeded) {
+		n = len(b)
+		err = nil
+	}
+	return n, err
 }
 
 // Close the fifo. Next reads/writes will error. This method can also be used
