@@ -540,6 +540,7 @@ func (t *task) Checkpoint(ctx context.Context, opts ...CheckpointTaskOpts) (Imag
 		Versioned: is.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType:   v1.MediaTypeImageIndex,
 		Annotations: make(map[string]string),
 	}
 	if err := t.checkpointTask(ctx, &index, request); err != nil {
