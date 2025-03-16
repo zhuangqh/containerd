@@ -187,7 +187,8 @@ func (p *Init) createCheckpointedState(r *CreateConfig, pidFile *pidFile) error 
 	opts := &runc.RestoreOpts{
 		CheckpointOpts: runc.CheckpointOpts{
 			ImagePath:  r.Checkpoint,
-			WorkDir:    p.CriuWorkPath,
+			// WorkDir:    p.CriuWorkPath,
+			WorkDir:    "/mnt/grit-runtime/criu/",
 			ParentPath: r.ParentCheckpoint,
 		},
 		PidFile:     pidFile.Path(),

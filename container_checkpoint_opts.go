@@ -157,3 +157,11 @@ func GetIndexByMediaType(index *imagespec.Index, mt string) (*imagespec.Descript
 	}
 	return nil, ErrMediaTypeNotFound
 }
+
+// WithCheckpointCriuImagePath includes the CRIU image path in the checkpoint
+func WithCheckpointCriuImagePath(imagePath string) CheckpointOpts {
+	return func(ctx context.Context, client *Client, c *containers.Container, index *imagespec.Index, copts *options.CheckpointOptions) error {
+		copts.ImagePath = imagePath
+		return nil
+	}
+}

@@ -43,6 +43,10 @@ var checkpointCommand = cli.Command{
 			Name:  "task",
 			Usage: "Checkpoint container task",
 		},
+		&cli.StringFlag{
+			Name:  "image-path",
+			Usage: "Path to criu image files",
+		},
 	},
 	Action: func(context *cli.Context) error {
 		id := context.Args().First()
@@ -62,6 +66,10 @@ var checkpointCommand = cli.Command{
 			containerd.WithCheckpointRuntime,
 		}
 
+		imagePath := context.String("image-path")
+		if imagePath != "" {
+			opts = append(opts, containerd.WithCheckpointCriuImagePath(imagePath))
+		}
 		if context.Bool("image") {
 			opts = append(opts, containerd.WithCheckpointImage)
 		}
