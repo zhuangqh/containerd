@@ -47,6 +47,7 @@ import (
 	"github.com/containerd/containerd/v2/internal/cri/annotations"
 	criconfig "github.com/containerd/containerd/v2/internal/cri/config"
 	crilabels "github.com/containerd/containerd/v2/internal/cri/labels"
+	"github.com/containerd/containerd/v2/internal/cri/server/grit"
 	"github.com/containerd/containerd/v2/internal/cri/util"
 	snpkg "github.com/containerd/containerd/v2/pkg/snapshotters"
 	"github.com/containerd/containerd/v2/pkg/tracing"
@@ -113,6 +114,11 @@ func (c *GRPCCRIImageService) PullImage(ctx context.Context, r *runtime.PullImag
 	if err != nil {
 		return nil, err
 	}
+
+	if err = grit.InterceptPullImage(ctx, r); err != nil {
+		return nil, err
+	}
+
 	return &runtime.PullImageResponse{ImageRef: ref}, nil
 }
 

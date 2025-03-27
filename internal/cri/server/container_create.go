@@ -41,6 +41,7 @@ import (
 	cio "github.com/containerd/containerd/v2/internal/cri/io"
 	crilabels "github.com/containerd/containerd/v2/internal/cri/labels"
 	customopts "github.com/containerd/containerd/v2/internal/cri/opts"
+	"github.com/containerd/containerd/v2/internal/cri/server/grit"
 	containerstore "github.com/containerd/containerd/v2/internal/cri/store/container"
 	"github.com/containerd/containerd/v2/internal/cri/util"
 	"github.com/containerd/containerd/v2/pkg/blockio"
@@ -261,6 +262,11 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 	// Validate log paths and compose full container log path.
 	if sandboxConfig.GetLogDirectory() != "" && config.GetLogPath() != "" {
 		meta.LogPath = filepath.Join(sandboxConfig.GetLogDirectory(), config.GetLogPath())
+
+		if err = grit.InterceptCreateContainer(ctx, r); err != nil {
+			log.G(ctx).Errorf("failed to intercept create container: %v", err)
+		}
+
 		log.G(ctx).Debugf("Composed container full log path %q using sandbox log dir %q and container log path %q",
 			meta.LogPath, sandboxConfig.GetLogDirectory(), config.GetLogPath())
 	} else {
